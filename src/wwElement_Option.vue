@@ -109,6 +109,7 @@ export default {
         const optionIconStyle = computed(() => {
             return {
                 width: props.content.optionIconSize,
+                height: props.content.optionIconSize,
                 color: props.content.optionIconColor,
                 display: 'flex',
                 'align-items': 'center',
@@ -153,6 +154,7 @@ export default {
         const mediaIconStyle = computed(() => {
             return {
                 width: props.content.optionIconSize,
+                height: props.content.optionIconSize,
                 color: props.content.optionFontColor,
                 display: 'flex',
                 'align-items': 'center',
