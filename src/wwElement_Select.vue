@@ -994,6 +994,7 @@ export default {
                 debounce(syncFloating, 300);
                 observeTriggerSize();
             });
+            if (initialState.value === 'open') openDropdown();
             wwLib.getFrontDocument().addEventListener('click', handleClickOutside);
             wwLib.getFrontWindow().addEventListener('scroll', syncFloating);
             wwLib.getFrontWindow().addEventListener('resize', syncFloating);
