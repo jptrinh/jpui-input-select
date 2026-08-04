@@ -831,7 +831,7 @@ export default {
         watch(
             initialState,
             () => {
-                if (initialState.value && initialState.value === 'open') openDropdown();
+                if (!isEditing.value && initialState.value && initialState.value === 'open') openDropdown();
                 else if (!forceOpenInEditor.value) closeDropdown();
             },
             { immediate: true }
@@ -843,7 +843,7 @@ export default {
             nextTick(debounce(syncFloating, 300));
 
             if (forceOpenInEditor.value && isEditing.value) openDropdown();
-            else if (initialState.value && initialState.value === 'open') openDropdown();
+            else if (!isEditing.value && initialState.value && initialState.value === 'open') openDropdown();
             else closeDropdown();
         });
 
@@ -994,6 +994,7 @@ export default {
                 debounce(syncFloating, 300);
                 observeTriggerSize();
             });
+            if (!isEditing.value && initialState.value === 'open') openDropdown();
             wwLib.getFrontDocument().addEventListener('click', handleClickOutside);
             wwLib.getFrontWindow().addEventListener('scroll', syncFloating);
             wwLib.getFrontWindow().addEventListener('resize', syncFloating);
