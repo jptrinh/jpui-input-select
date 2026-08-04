@@ -111,6 +111,7 @@ export default {
                 width: props.content.optionIconSize,
                 height: props.content.optionIconSize,
                 color: props.content.optionIconColor,
+                fill: 'currentColor',
                 display: 'flex',
                 'align-items': 'center',
                 'justify-content': 'center',
@@ -155,7 +156,8 @@ export default {
             return {
                 width: props.content.optionIconSize,
                 height: props.content.optionIconSize,
-                color: props.content.optionFontColor,
+                color: props.content.optionIconColor,
+                fill: 'currentColor',
                 display: 'flex',
                 'align-items': 'center',
                 'justify-content': 'center',
