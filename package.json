@@ -2,7 +2,7 @@
     "name": "ww-select",
     "repository": {
         "type": "git",
-        "url": "https://github.com/weweb-assets/ww-select"
+        "url": "https://github.com/weweb-assets/ww-input-select"
     },
     "weweb": {
         "componentPath": "./src/wwElement_Select.vue"
