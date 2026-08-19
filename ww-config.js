@@ -376,7 +376,7 @@ export default {
             }),
             defaultValue: {
                 type: 'f',
-                code: "context.mapping?.['label'] || context.mapping",
+                code: "context.mapping?.['label'] ?? context.mapping",
             },
             /* wwEditor:start */
             propertyHelp: {
@@ -394,7 +394,7 @@ export default {
             }),
             defaultValue: {
                 type: 'f',
-                code: "context.mapping?.['icon'] || null",
+                code: "context.mapping?.['icon'] ?? null",
             },
             /* wwEditor:start */
             propertyHelp: {
@@ -412,7 +412,7 @@ export default {
             }),
             defaultValue: {
                 type: 'f',
-                code: "context.mapping?.['image'] || null",
+                code: "context.mapping?.['image'] ?? null",
             },
             /* wwEditor:start */
             propertyHelp: {
@@ -430,7 +430,7 @@ export default {
             }),
             defaultValue: {
                 type: 'f',
-                code: "context.mapping?.['value'] || context.mapping",
+                code: "context.mapping?.['value'] ?? context.mapping",
             },
             /* wwEditor:start */
             propertyHelp: {

@@ -197,7 +197,9 @@ export default {
         const triggerIconStyle = computed(() => {
             return {
                 width: props.content.triggerIconSize,
+                height: props.content.triggerIconSize,
                 color: props.content.triggerIconColor,
+                fill: 'currentColor',
                 display: 'flex',
                 'align-items': 'center',
                 'justify-content': 'center',
@@ -209,7 +211,9 @@ export default {
         const selectedMediaIconStyle = computed(() => {
             return {
                 width: props.content.triggerIconSize,
+                height: props.content.triggerIconSize,
                 color: props.content.selectedFontColor,
+                fill: 'currentColor',
                 display: 'flex',
                 'align-items': 'center',
                 'justify-content': 'center',
@@ -316,7 +320,9 @@ export default {
         const chipIconStyle = computed(() => {
             return {
                 width: props.content.chipIconSize,
+                height: props.content.chipIconSize,
                 color: props.content.chipIconColor,
+                fill: 'currentColor',
                 display: 'flex',
                 'align-items': 'center',
                 'justify-content': 'center',
@@ -326,7 +332,9 @@ export default {
 
         const chipMediaIconStyle = computed(() => ({
             width: props.content.chipIconSize,
+            height: props.content.chipIconSize,
             color: props.content.chipFontColor,
+            fill: 'currentColor',
             display: 'flex',
             'align-items': 'center',
             'justify-content': 'center',
