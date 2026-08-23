@@ -252,7 +252,7 @@ export default {
             const triggerRect = triggerElement.value.getBoundingClientRect();
             const offsetY = parseInt(props.content.offsetY) || 0;
             const offsetX = parseInt(props.content.offsetX) || 0;
-            const viewportHeight = wwLib.getFrontWindow()?.innerHeight || window.innerHeight;
+            const viewportHeight = wwLib.getFrontWindow()?.innerHeight || 0;
 
             let top = triggerRect.bottom + offsetY;
 
@@ -504,7 +504,7 @@ export default {
 
             nextTick(() => {
                 // Wait for browser to complete layout calculations
-                requestAnimationFrame(() => {
+                wwLib.getFrontWindow().requestAnimationFrame(() => {
                     syncFloating();
                     if (autoFocusSearch.value) focusSearch();
                 });
@@ -601,7 +601,10 @@ export default {
                 resizeObserver.value = null;
             }
 
-            resizeObserver.value = new ResizeObserver(
+            const frontWindow = wwLib.getFrontWindow();
+            if (!frontWindow?.ResizeObserver) return;
+
+            resizeObserver.value = new frontWindow.ResizeObserver(
                 debounce(entries => {
                     if (entries[0]) {
                         const rect = triggerElement.value.getBoundingClientRect();
@@ -737,7 +740,7 @@ export default {
 
         // Initialize passive event support detection
         try {
-            window.addEventListener(
+            wwLib.getFrontWindow().addEventListener(
                 'test',
                 null,
                 Object.defineProperty({}, 'passive', {
@@ -749,7 +752,7 @@ export default {
         } catch (e) {}
 
         wheelOpt = supportsPassive ? { passive: false } : false;
-        wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+        wheelEvent = 'onwheel' in wwLib.getFrontDocument().createElement('div') ? 'wheel' : 'mousewheel';
 
         const preventDefault = e => {
             // Allow scrolling inside the dropdown element
@@ -763,7 +766,7 @@ export default {
             const keys = { 37: 1, 38: 1, 39: 1, 40: 1 };
             if (keys[e.keyCode]) {
                 // Allow scrolling inside the dropdown element
-                if (dropdownElement.value && dropdownElement.value.contains(document.activeElement)) {
+                if (dropdownElement.value && dropdownElement.value.contains(wwLib.getFrontDocument().activeElement)) {
                     return;
                 }
                 preventDefault(e);
