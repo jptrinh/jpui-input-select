@@ -1,25 +1,12 @@
-import { ref, watch, inject, nextTick } from 'vue';
+import { ref, inject } from 'vue';
 
-export default function useAccessibility({ emit, optionElement, content }) {
-    const uid = wwLib.wwUtils.getUid();
-    const optionId = `ww-select-option-${content.value}-${uid}`;
-    const activeDescendant = inject('_wwSelect:activeDescendant', ref(''));
+export default function useAccessibility() {
+    // DOM focus stays on the combobox (that is the point of aria-activedescendant); keeping the
+    // focused option in view is handled by the options list, which also knows about the options
+    // the virtual scroller has not mounted.
     const focusFromOptionId = inject('_wwSelect:focusFromOptionId', () => {});
 
-    watch(activeDescendant, () => {
-        if (activeDescendant.value === optionId) {
-            nextTick(() => {
-                if (optionElement.value) {
-                    optionElement.value.focus();
-                    optionElement.value.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-                }
-            });
-        }
-    });
-
     return {
-        uid,
-        optionId,
         focusFromOptionId,
     };
 }

@@ -2,6 +2,7 @@
     <!-- Heavy Mode: RecycleScroller for better performance with large lists -->
     <RecycleScroller
         v-if="heavyMode && filteredOptions.length > 0"
+        ref="recycleScrollerRef"
         class="scroller"
         :style="scrollerStyle"
         :items="dynamicScrollerItems"
@@ -13,7 +14,12 @@
         <template v-slot="{ item, index }">
             <wwLayoutItemContext :key="index" is-repeat :index="index" :data="item">
                 <div :style="index != filteredOptions.length - 1 ? { paddingBottom: content.optionSpacing } : {}">
-                    <ww-element-option :local-data="item" :content="content" :wwEditorState="wwEditorState" />
+                    <ww-element-option
+                        :local-data="item"
+                        :index="index"
+                        :content="content"
+                        :wwEditorState="wwEditorState"
+                    />
                 </div>
             </wwLayoutItemContext>
         </template>
@@ -22,6 +28,7 @@
     <!-- Normal Mode: DynamicScroller with automatic size detection -->
     <DynamicScroller
         v-else-if="!heavyMode && filteredOptions.length > 0"
+        ref="dynamicScrollerRef"
         class="scroller"
         :style="scrollerStyle"
         :items="dynamicScrollerItems"
@@ -38,7 +45,12 @@
             >
                 <wwLayoutItemContext :key="index" is-repeat :index="index" :data="item">
                     <div :style="index != filteredOptions.length - 1 ? { paddingBottom: content.optionSpacing } : {}">
-                        <ww-element-option :local-data="item" :content="content" :wwEditorState="wwEditorState" />
+                        <ww-element-option
+                            :local-data="item"
+                            :index="index"
+                            :content="content"
+                            :wwEditorState="wwEditorState"
+                        />
                     </div>
                 </wwLayoutItemContext>
             </DynamicScrollerItem>
@@ -52,7 +64,7 @@
 
 <script>
 import InputSelectOption from './wwElement_Option.vue';
-import { ref, inject, computed, watch } from 'vue';
+import { ref, inject, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller';
 import { useMemoize } from '@vueuse/core';
 /* wwEditor:start */
@@ -99,6 +111,11 @@ export default {
         const searchState = inject('_wwSelect:searchState', ref(null));
         const { updateSearch } = inject('_wwSelect:useSearch', {});
         const registerOptionProperties = inject('_wwSelect:registerOptionProperties', () => {});
+        const registerFilteredOptions = inject('_wwSelect:registerFilteredOptions', () => {});
+        const activeDescendant = inject('_wwSelect:activeDescendant', ref(''));
+        const focusedOptionIndex = inject('_wwSelect:focusedOptionIndex', ref(0));
+        const recycleScrollerRef = ref(null);
+        const dynamicScrollerRef = ref(null);
         const virtualScrollMinItemSize = computed(() => props.content.virtualScrollMinItemSize);
         const virtualScrollBuffer = computed(() => props.content.virtualScrollBuffer);
         const heavyMode = computed(() => props.content.heavyMode);
@@ -175,6 +192,52 @@ export default {
             });
         });
 
+        /*
+         * The select derives its option list (keyboard navigation, local context) from this array,
+         * so it covers every filtered option and not just the ones the scroller has mounted.
+         */
+        watch(
+            dynamicScrollerItems,
+            items => {
+                registerFilteredOptions(items);
+            },
+            { immediate: true }
+        );
+
+        onBeforeUnmount(() => registerFilteredOptions([]));
+
+        /*
+         * Bring the focused option into view. When it is outside the rendered window there is no
+         * element to scroll, so the virtual scroller is asked to jump to that index instead - its
+         * position is estimated from unmeasured item sizes, hence the scrollIntoView afterwards to
+         * settle on the exact offset once the option is really there.
+         */
+        const scrollToFocusedOption = () => {
+            const id = activeDescendant.value;
+            if (!id) return;
+
+            const frontDocument = wwLib.getFrontDocument();
+            if (!frontDocument.getElementById(id)) {
+                const scroller = heavyMode.value ? recycleScrollerRef.value : dynamicScrollerRef.value;
+                scroller?.scrollToItem?.(focusedOptionIndex.value);
+            }
+
+            frontDocument.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        };
+
+        /*
+         * nextTick gets us past the render, requestAnimationFrame past the virtual scroller's own
+         * mounted nextTick: until that has run the scroll area still has no height, and anything we
+         * set on scrollTop is clamped back to 0 - which is why the dropdown used to open at the top
+         * of the list instead of at the selected option.
+         */
+        const scheduleScrollToFocusedOption = () => {
+            nextTick(() => wwLib.getFrontWindow().requestAnimationFrame(scrollToFocusedOption));
+        };
+
+        watch(activeDescendant, scheduleScrollToFocusedOption);
+        onMounted(scheduleScrollToFocusedOption);
+
         watch(filteredOptions, () => {
             if (updateSearch) {
                 const searchMatches = searchState.value && searchState.value.value ? filteredOptions.value : [];
@@ -236,6 +299,8 @@ export default {
             dynamicScrollerItems,
             scrollerStyle,
             emptyStateStyle,
+            recycleScrollerRef,
+            dynamicScrollerRef,
         };
     },
 };

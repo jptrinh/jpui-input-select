@@ -2,12 +2,10 @@
     <div
         :class="['ww-select-option', isFocused ? 'focused' : '', isOptionDisabled ? 'disabled' : '']"
         :style="optionStyles"
-        ref="optionRef"
         @click="handleClick"
         @mousedown="handleMouseDown"
         @mouseup="handleMouseUp"
         @mouseleave="handleMouseLeave"
-        @keydown="handleKeyDown"
         role="option"
         :id="optionId"
         :aria-selected="isSelected"
@@ -32,12 +30,12 @@
 </template>
 
 <script>
-import { ref, unref, toValue, inject, computed, watch, onBeforeUnmount, watchEffect, nextTick } from 'vue';
+import { ref, toValue, inject, computed, watch, watchEffect, nextTick } from 'vue';
 import useAccessibility from './useAccessibility_Option';
 /* wwEditor:start */
 import useEditorHint from './editor/useEditorHint';
 /* wwEditor:end */
-import { areValuesEqual } from './utils';
+import { areValuesEqual, getOptionId, resolveOptionLabel, resolveOptionValue } from './utils';
 
 const SELECT_OPTION_ICON =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -49,6 +47,7 @@ export default {
         wwEditorState: { type: Object, required: true },
         /* wwEditor:end */
         localData: { type: Object, default: () => ({}) },
+        index: { type: Number, default: 0 },
     },
     emits: ['update:content', 'update:sidepanel-content', 'add-state', 'remove-state'],
     setup(props, { emit }) {
@@ -68,10 +67,7 @@ export default {
 
         const { resolveMappingFormula } = wwLib.wwFormula.useFormula();
 
-        const registerOption = inject('_wwSelect:registerOption', () => {});
-        const unregisterOption = inject('_wwSelect:unregisterOption', () => {});
-        const optionRef = ref(null);
-        const optionElement = computed(() => optionRef.value?.componentRef?.$el);
+        const selectUid = inject('_wwSelect:uid', '');
         const selectValue = inject('_wwSelect:value', ref(''));
         const selectType = inject('_wwSelect:type', ref('simple'));
         const setValue = inject('_wwSelect:setValue', () => {});
@@ -204,71 +200,22 @@ export default {
                 : {};
         });
 
-        const label = computed(() => {
-            // Check if this is a wrapped primitive from OptionsList (has only 'value' and 'id' properties)
-            const isWrappedPrimitive =
-                props.localData &&
-                typeof props.localData === 'object' &&
-                'value' in props.localData &&
-                'id' in props.localData &&
-                Object.keys(props.localData).length === 2;
+        // Resolved through the shared helpers so the option renders exactly what the select
+        // registered for it (keyboard navigation, local context, selection matching).
+        const label = computed(() =>
+            resolveOptionLabel(props.localData, toValue(mappingLabel), resolveMappingFormula, props.content.label)
+        );
 
-            if (isWrappedPrimitive) {
-                // For wrapped primitives, use the inner value as the label
-                return props.localData.value;
-            }
+        const value = computed(() =>
+            resolveOptionValue(props.localData, toValue(mappingValue), resolveMappingFormula, props.content.value)
+        );
 
-            // Handle true primitive values (strings, numbers) vs objects
-            const isPrimitive = typeof props.localData !== 'object' || props.localData === null;
-
-            if (isPrimitive) {
-                // For primitive values, use the value as the label
-                return props.localData;
-            } else {
-                // For objects, use the mapping formula
-                // For all option types, label is mappingLabel (or fallbacks)
-                return (
-                    resolveMappingFormula(toValue(mappingLabel), props.localData) ||
-                    props.localData?.label ||
-                    props.localData?.text ||
-                    props.content.label ||
-                    props.localData
-                );
-            }
-        });
-
-        const value = computed(() => {
-            // Check if this is a wrapped primitive from OptionsList (has only 'value' and 'id' properties)
-            const isWrappedPrimitive =
-                props.localData &&
-                typeof props.localData === 'object' &&
-                'value' in props.localData &&
-                'id' in props.localData &&
-                Object.keys(props.localData).length === 2;
-
-            if (isWrappedPrimitive) {
-                // For wrapped primitives, use the inner value
-                return props.localData.value;
-            }
-
-            // Handle true primitive values (strings, numbers) vs objects
-            const isPrimitive = typeof props.localData !== 'object' || props.localData === null;
-
-            if (isPrimitive) {
-                // For primitive values, use the value itself
-                return props.localData;
-            } else {
-                // For objects, use the mapping formula
-                return (
-                    resolveMappingFormula(toValue(mappingValue), props.localData) ??
-                    props.content.value ??
-                    props.localData
-                );
-            }
-        });
         const isOptionDisabled = computed(() => resolveMappingFormula(toValue(mappingDisabled), props.localData));
 
-        const isFocused = computed(() => optionId == activeDescendant.value);
+        // Same id the select computes for this position, so aria-activedescendant resolves.
+        const optionId = computed(() => getOptionId(selectUid, props.index));
+
+        const isFocused = computed(() => optionId.value === activeDescendant.value);
 
         const isSelected = computed(() =>
             selectType.value === 'single'
@@ -276,23 +223,7 @@ export default {
                 : Array.isArray(selectValue.value) && selectValue.value.some(v => areValuesEqual(v, value.value))
         );
 
-        const { optionId, handleKeyDown, focusFromOptionId } = useAccessibility({
-            emit,
-            optionElement,
-            content: props.content,
-        });
-
-        const option = computed(() => ({
-            optionId,
-            label: label.value,
-            value: value.value,
-            disabled: isOptionDisabled.value,
-            isSelected: isSelected.value,
-            _data: props.localData,
-        }));
-
-        unregisterOption(optionId);
-        registerOption(optionId, unref(option));
+        const { focusFromOptionId } = useAccessibility();
 
         const canInteract = computed(
             () => !isEditing.value && !isOptionDisabled.value && !isDisabled.value && !isReadonly.value
@@ -305,7 +236,7 @@ export default {
                 focusSelectElement();
             } else if (!isSelected.value && canInteract.value && props.content.selectOnClick) {
                 updateValue(value.value);
-                focusFromOptionId(optionId);
+                focusFromOptionId(optionId.value);
                 focusSelectElement();
             }
         };
@@ -391,8 +322,6 @@ export default {
             },
         };
 
-        onBeforeUnmount(() => unregisterOption(optionId));
-
         const contextMarkdown = `### Select Option local informations
 
         // - \`isSelected\`: Boolean indicating if the option is selected
@@ -401,16 +330,13 @@ export default {
         // - \`value\`: The value of the option (will be overwritten if defined in the Select root element)`;
 
         return {
-            optionRef,
             optionId,
             handleClick,
             handleMouseDown,
             handleMouseUp,
             handleMouseLeave,
-            handleKeyDown,
             isFocused,
             activeDescendant,
-            option,
             optionStyles,
             optionIcon,
             optionIconStyle,

@@ -72,7 +72,15 @@ import InputSelectSearch from './wwElement_Search.vue';
 import { ref, computed, provide, watch, inject, nextTick, toValue, onMounted, onBeforeUnmount, shallowRef } from 'vue';
 import useAccessibility from './select/useAccessibility';
 import useSearch from './select/useSearch';
-import { debounce, findValueIndex, areValuesEqual } from './utils';
+import {
+    debounce,
+    findValueIndex,
+    areValuesEqual,
+    getValueKey,
+    getOptionId,
+    resolveOptionLabel,
+    resolveOptionValue,
+} from './utils';
 
 /* wwEditor:start */
 import useEditorHint from './editor/useEditorHint';
@@ -147,8 +155,17 @@ export default {
         const triggerElement = ref(null);
         const dropdownElement = ref(null);
         const autoFocus = computed(() => props.content.autoFocus);
-        const optionsMap = ref(new Map());
-        const options = computed(() => Array.from(optionsMap.value.values()));
+        /*
+         * The options list is driven by the data, not by the option components that happen to be
+         * mounted: the dropdown is virtualized, so only a window of options exists in the DOM at
+         * any time. `filteredItems` is pushed by the options list (which owns the search filter),
+         * in display order, and every option below is derived from it. That keeps keyboard
+         * navigation and the local context working over the whole list.
+         */
+        const filteredItems = ref([]);
+        const registerFilteredOptions = items => {
+            filteredItems.value = Array.isArray(items) ? items : [];
+        };
         const isOpen = ref(false);
         const isReallyFocused = ref(false);
         const isFocusVisible = ref(false);
@@ -199,6 +216,35 @@ export default {
         const mappingDisabled = computed(() => props.content.mappingDisabled);
         const showSearch = computed(() => props.content.showSearch);
         const allowScrollingWhenOpen = computed(() => props.content.allowScrollingWhenOpen);
+
+        // Label / value / disabled resolved once per item, independently of the current selection.
+        const optionDescriptors = computed(() =>
+            filteredItems.value.map((item, index) => ({
+                optionId: getOptionId(props.uid, index),
+                label: resolveOptionLabel(item, toValue(mappingLabel), resolveMappingFormula, props.content.label),
+                value: resolveOptionValue(item, toValue(mappingValue), resolveMappingFormula, props.content.value),
+                disabled: !!resolveMappingFormula(toValue(mappingDisabled), item),
+                _data: item,
+            }))
+        );
+
+        // Selected values as comparison keys, so marking N options is O(N) instead of O(N * selected).
+        const selectedValueKeys = computed(() => {
+            const values =
+                selectType.value === 'single'
+                    ? [variableValue.value]
+                    : Array.isArray(variableValue.value)
+                    ? variableValue.value
+                    : [];
+            return new Set(values.map(getValueKey));
+        });
+
+        const options = computed(() =>
+            optionDescriptors.value.map(option => ({
+                ...option,
+                isSelected: selectedValueKeys.value.has(getValueKey(option.value)),
+            }))
+        );
 
         // Styles
         const syncFloating = () => {
@@ -271,14 +317,6 @@ export default {
         const lastTriggeredComponentAction = ref(Date.now());
 
         // Methods
-        const registerOption = (id, option) => {
-            optionsMap.value.set(id, option);
-        };
-
-        const unregisterOption = id => {
-            optionsMap.value.delete(id);
-        };
-
         const registerOptionProperties = object => {
             if (object) optionProperties.value = object;
         };
@@ -329,9 +367,8 @@ export default {
                 return;
             }
 
-            const option = Array.from(optionsMap.value).find(([key, option]) => option.value === value);
-            if (!option && !options?.length > 1) return;
-            if (option?.[1]?.disabled) return;
+            const option = options.value.find(option => areValuesEqual(option.value, value));
+            if (option?.disabled) return;
 
             const originalValue =
                 selectType.value === 'single'
@@ -1007,8 +1044,8 @@ export default {
         provide('_wwSelect:optionProperties', optionProperties);
         provide('_wwSelect:updateValue', updateValue);
         provide('_wwSelect:removeSpecificValue', removeSpecificValue);
-        provide('_wwSelect:registerOption', registerOption);
-        provide('_wwSelect:unregisterOption', unregisterOption);
+        provide('_wwSelect:uid', props.uid);
+        provide('_wwSelect:registerFilteredOptions', registerFilteredOptions);
         provide('_wwSelect:registerOptionProperties', registerOptionProperties);
         provide('_wwSelect:registerTriggerLocalContext', registerTriggerLocalContext);
         provide('_wwSelect:dropdownMethods', { closeDropdown });

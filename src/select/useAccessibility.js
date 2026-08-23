@@ -1,4 +1,5 @@
 import { ref, provide, watch } from 'vue';
+import { areValuesEqual } from '../utils';
 
 export default function useAccessibility({
     elementRef,
@@ -14,18 +15,26 @@ export default function useAccessibility({
 
     const updateFocusedOption = index => {
         const focusedOption = options.value[index];
+        if (!focusedOption) {
+            resetFocus();
+            return;
+        }
         focusedOptionIndex.value = index;
         activeOptionValue.value = focusedOption.value;
         activeDescendant.value = focusedOption.optionId;
     };
 
     const focusFromOptionId = optionId => {
-        if (optionId === null) {
+        if (!optionId) {
             resetFocus();
             return;
         }
 
         const index = options.value.findIndex(option => option.optionId === optionId);
+        if (index === -1) {
+            resetFocus();
+            return;
+        }
         updateFocusedOption(index);
     };
 
@@ -39,20 +48,30 @@ export default function useAccessibility({
         elementRef.value?.focus();
     };
 
+    /*
+     * The options list is recomputed on every selection change, so keep the current focus where it
+     * is when the focused option is still in the list. Only when it disappears (search, new data)
+     * do we fall back to the selected option, which is what should be focused when the list first
+     * appears.
+     */
     watch(
         options,
         () => {
+            const focusedIndex = activeDescendant.value
+                ? options.value.findIndex(option => option.optionId === activeDescendant.value)
+                : -1;
+
+            if (focusedIndex !== -1) {
+                updateFocusedOption(focusedIndex);
+                return;
+            }
+
             resetFocus();
 
-            if (options.value.length > 0) {
-                const selectedOption = options.value.find(option => option.isSelected);
-                if (selectedOption) {
-                    const selectedIndex = options.value.findIndex(option => option.value === selectedOption.value);
-                    updateFocusedOption(selectedIndex);
-                }
-            }
+            const selectedIndex = options.value.findIndex(option => option.isSelected);
+            if (selectedIndex !== -1) updateFocusedOption(selectedIndex);
         },
-        { immediate: true, deep: true }
+        { immediate: true }
     );
 
     const navigateOptions = direction => {
@@ -128,7 +147,7 @@ export default function useAccessibility({
     };
 
     const setInitialFocus = value => {
-        const selectedIndex = options.value.findIndex(option => option.value === value);
+        const selectedIndex = options.value.findIndex(option => areValuesEqual(option.value, value));
         if (selectedIndex !== -1) {
             updateFocusedOption(selectedIndex);
         }
