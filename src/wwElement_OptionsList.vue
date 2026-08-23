@@ -8,7 +8,6 @@
         :items="dynamicScrollerItems"
         :item-size="itemSize"
         :buffer="virtualScrollBuffer"
-        :key="'heavy-' + filteredOptions.length"
         key-field="id"
     >
         <template v-slot="{ item, index }">
@@ -34,7 +33,6 @@
         :items="dynamicScrollerItems"
         :min-item-size="virtualScrollMinItemSize"
         :buffer="virtualScrollBuffer"
-        :key="'dynamic-' + filteredOptions.length"
     >
         <template v-slot="{ item, index, active }">
             <DynamicScrollerItem
@@ -66,7 +64,6 @@
 import InputSelectOption from './wwElement_Option.vue';
 import { ref, inject, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller';
-import { useMemoize } from '@vueuse/core';
 /* wwEditor:start */
 import useEditorHint from './editor/useEditorHint';
 /* wwEditor:end */
@@ -133,49 +130,35 @@ export default {
             return options.value[0];
         });
 
-        const memoizedFilter = useMemoize((options, filterValue) => {
-            return options.filter(option => {
-                // Handle primitive values directly
-                const isPrimitive = typeof option !== 'object' || option === null;
-                if (isPrimitive) {
-                    const normalizedOption = option
-                        .toString()
-                        .normalize('NFD')
-                        .replace(/[\u0300-\u036f]/g, '')
-                        .toLowerCase();
-                    const normalizedFilter = filterValue
-                        .normalize('NFD')
-                        .replace(/[\u0300-\u036f]/g, '')
-                        .toLowerCase();
-                    return normalizedOption.includes(normalizedFilter);
-                } else {
-                    // For objects, use the existing search logic
-                    const searchBy = searchState.value?.searchBy?.length
-                        ? searchState.value?.searchBy
-                        : Object.keys(option);
-                    return searchBy.some(key => {
-                        const optionValue = option[key];
-                        if (!optionValue) return false;
-                        const normalizedOption = optionValue
-                            .toString()
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '')
-                            .toLowerCase();
-                        const normalizedFilter = filterValue
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '')
-                            .toLowerCase();
+        const normalizeText = value =>
+            String(value)
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
 
-                        return normalizedOption.includes(normalizedFilter);
-                    });
-                }
-            });
-        });
-
+        /*
+         * Plain computed rather than useMemoize: its default cache key is a JSON.stringify of the
+         * arguments, so every keystroke serialized the whole option list to look the cache up, and
+         * nothing ever evicted the entries. A computed already caches until its dependencies move.
+         */
         const filteredOptions = computed(() => {
-            if (!searchState.value || !searchState.value.value) return options.value;
-            let filtered = memoizedFilter(options.value, searchState.value.value);
-            return filtered;
+            const search = searchState.value?.value;
+            if (!search) return options.value;
+
+            // Normalized once per pass instead of once per option per key.
+            const needle = normalizeText(search);
+            const searchBy = searchState.value?.searchBy?.length ? searchState.value.searchBy : null;
+
+            return options.value.filter(option => {
+                const isPrimitive = typeof option !== 'object' || option === null;
+                if (isPrimitive) return normalizeText(option).includes(needle);
+
+                return (searchBy ?? Object.keys(option)).some(key => {
+                    const value = option[key];
+                    if (!value) return false;
+                    return normalizeText(value).includes(needle);
+                });
+            });
         });
 
         const dynamicScrollerItems = computed(() => {
@@ -193,32 +176,24 @@ export default {
         });
 
         /*
-         * The select derives its option list (keyboard navigation, local context) from this array,
-         * so it covers every filtered option and not just the ones the scroller has mounted.
-         */
-        watch(
-            dynamicScrollerItems,
-            items => {
-                registerFilteredOptions(items);
-            },
-            { immediate: true }
-        );
-
-        onBeforeUnmount(() => registerFilteredOptions([]));
-
-        /*
          * Bring the focused option into view. When it is outside the rendered window there is no
          * element to scroll, so the virtual scroller is asked to jump to that index instead - its
          * position is estimated from unmeasured item sizes, hence the scrollIntoView afterwards to
          * settle on the exact offset once the option is really there.
          */
         const scrollToFocusedOption = () => {
+            const scroller = heavyMode.value ? recycleScrollerRef.value : dynamicScrollerRef.value;
             const id = activeDescendant.value;
-            if (!id) return;
+
+            // Nothing focused - typically a search whose results hold no selected option. Start
+            // from the top rather than keeping an offset that belonged to the previous list.
+            if (!id) {
+                scroller?.scrollToItem?.(0);
+                return;
+            }
 
             const frontDocument = wwLib.getFrontDocument();
             if (!frontDocument.getElementById(id)) {
-                const scroller = heavyMode.value ? recycleScrollerRef.value : dynamicScrollerRef.value;
                 scroller?.scrollToItem?.(focusedOptionIndex.value);
             }
 
@@ -234,6 +209,23 @@ export default {
         const scheduleScrollToFocusedOption = () => {
             nextTick(() => wwLib.getFrontWindow().requestAnimationFrame(scrollToFocusedOption));
         };
+
+        /*
+         * The select derives its option list (keyboard navigation, local context) from this array,
+         * so it covers every filtered option and not just the ones the scroller has mounted.
+         */
+        watch(
+            dynamicScrollerItems,
+            items => {
+                registerFilteredOptions(items);
+                // The scroller is no longer remounted on every count change, so the scroll offset
+                // has to be brought back in line with the new list explicitly.
+                scheduleScrollToFocusedOption();
+            },
+            { immediate: true }
+        );
+
+        onBeforeUnmount(() => registerFilteredOptions([]));
 
         watch(activeDescendant, scheduleScrollToFocusedOption);
         onMounted(scheduleScrollToFocusedOption);

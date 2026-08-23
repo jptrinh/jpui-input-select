@@ -32,18 +32,31 @@ export default {
         /* wwEditor:start */
         useEditorHint(emit);
         /* wwEditor:end */
-        const { updateHasSearch, updateSearchElement, updateSearch, autoFocusSearch, focusSearch, isSearchBarFocused, handleKeydown, handleFocusLeave } = inject(
-            '_wwSelect:useSearch',
-            {}
-        );
+        const {
+            updateHasSearch,
+            updateSearchElement,
+            updateSearch,
+            autoFocusSearch,
+            focusSearch,
+            isSearchBarFocused,
+            handleKeydown,
+            handleFocusLeave,
+        } = inject('_wwSelect:useSearch', {});
         const isMouseDownOnOption = inject('_wwSelect:isMouseDownOnOption', ref(false));
         const searchElementRef = ref(null);
         const searchElement = computed(() => searchElementRef.value);
         const searchBy = computed(() => {
             return (props.content.searchBy || [])
                 .filter(item => item && item.filter)
-                .map(item => JSON.parse(item.filter.replace(/'/g, '"')))
-                .flat();
+                .flatMap(item => {
+                    try {
+                        return JSON.parse(item.filter.replace(/'/g, '"'));
+                    } catch (e) {
+                        // This runs inside a computed: one malformed entry must not take the
+                        // render down, it just contributes no field to search on.
+                        return [];
+                    }
+                });
         });
 
         const debouncedUpdateSearch = debounce((value, searchBy) => {
