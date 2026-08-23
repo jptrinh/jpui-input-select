@@ -20,7 +20,14 @@
             </div>
             <span class="ww-select-option__text">{{ data.label }}</span>
         </div>
-        <div v-if="data.isSelected" v-html="optionIcon" :style="optionIconStyle" aria-hidden="true"></div>
+        <div
+            class="ww-select-option__check"
+            :class="{ 'is-selected': data.isSelected }"
+            :style="optionIconWrapperStyle"
+            aria-hidden="true"
+        >
+            <div class="ww-select-option__check-icon" v-html="optionIcon" :style="optionIconStyle"></div>
+        </div>
     </div>
 </template>
 
@@ -118,6 +125,17 @@ export default {
                 'align-items': 'center',
                 'justify-content': 'center',
                 'pointer-events': 'none',
+            };
+        });
+
+        /*
+         * The check icon wrapper always reserves its horizontal space (even when the option is not
+         * selected) but has no height of its own: the icon itself is absolutely positioned inside.
+         * This keeps every option the exact same size whether it is selected or not.
+         */
+        const optionIconWrapperStyle = computed(() => {
+            return {
+                width: props.content?.optionIconSize || '12px',
             };
         });
 
@@ -396,6 +414,7 @@ export default {
             optionStyles,
             optionIcon,
             optionIconStyle,
+            optionIconWrapperStyle,
             displayIconHtml,
             mediaIconStyle,
             displayImageUrl,
@@ -449,5 +468,24 @@ export default {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.ww-select-option__check {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+    height: 0;
+    visibility: hidden;
+
+    &.is-selected {
+        visibility: visible;
+    }
+}
+
+.ww-select-option__check-icon {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
 }
 </style>
