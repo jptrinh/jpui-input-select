@@ -28,7 +28,8 @@ export default function useSearch(searchState, { updateSearch }) {
     function resetSearch() {
         if (searchElement.value) {
             searchElement.value.value = '';
-            updateSearch({ ...searchState, value: '' });
+            // searchState is a ref: spreading it instead of its value dropped searchBy.
+            updateSearch({ ...searchState.value, value: '', searchMatches: [] });
         }
     }
 

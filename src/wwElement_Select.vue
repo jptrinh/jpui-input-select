@@ -532,16 +532,15 @@ export default {
         }
 
         function handleClickOutside(event) {
-            if (
-                closeOnClickOutside.value &&
-                isOpen.value &&
-                !triggerElement.value.contains(event.target) &&
-                !dropdownElement.value.contains(event.target) &&
-                !isEditing.value &&
-                Date.now() > lastTriggeredComponentAction.value + 400
-            ) {
-                closeDropdown();
-            }
+            if (!closeOnClickOutside.value || !isOpen.value || isEditing.value) return;
+            // A workflow action can open the dropdown from a click on another element: that click
+            // still bubbles here, before the teleported dropdown exists. The delay covers it - and
+            // the optional chaining keeps a missing element from throwing in the meantime.
+            if (Date.now() <= lastTriggeredComponentAction.value + 400) return;
+            if (triggerElement.value?.contains(event.target)) return;
+            if (dropdownElement.value?.contains(event.target)) return;
+
+            closeDropdown();
         }
 
         function handlePointerDown() {
@@ -928,8 +927,7 @@ export default {
 
                 emit('trigger-event', { name: 'initValueChange', event: { value: initValue.value } });
             },
-            { immediate: true },
-            { deep: true }
+            { immediate: true, deep: true }
         );
 
         watch(
@@ -1099,7 +1097,7 @@ export default {
 
         onMounted(() => {
             nextTick(() => {
-                debounce(syncFloating, 300);
+                syncFloating();
                 observeTriggerSize();
             });
             if (!isEditing.value && initialState.value === 'open') openDropdown();
