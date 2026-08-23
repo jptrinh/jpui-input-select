@@ -35,13 +35,15 @@ export function getValueKey(value) {
 }
 
 /*
- * The options list wraps primitive entries into { value, id } objects, so an item
- * with exactly those two keys is a primitive that has been wrapped, not a data object.
+ * The options list has to wrap primitive entries ('a', 42) into objects for the virtual scroller.
+ * The wrapper is tagged with a symbol rather than recognised by its shape: a real data object of
+ * exactly { value, id } is indistinguishable otherwise, and would have its value/label mappings
+ * silently skipped. Symbols stay out of Object.keys and JSON, so the tag is invisible to users.
  */
+export const WRAPPED_PRIMITIVE = Symbol('wwSelect:wrappedPrimitive');
+
 export function isWrappedPrimitive(item) {
-    return (
-        item !== null && typeof item === 'object' && 'value' in item && 'id' in item && Object.keys(item).length === 2
-    );
+    return item !== null && typeof item === 'object' && item[WRAPPED_PRIMITIVE] === true;
 }
 
 /*
@@ -58,7 +60,9 @@ export function resolveOptionValue(item, mappingValue, resolveMappingFormula, fa
 export function resolveOptionLabel(item, mappingLabel, resolveMappingFormula, fallbackLabel) {
     if (isWrappedPrimitive(item)) return item.value;
     if (item === null || typeof item !== 'object') return item;
-    return resolveMappingFormula(mappingLabel, item) || item.label || item.text || fallbackLabel || item;
+    // Nullish rather than falsy: a label mapped onto an empty or zero field is a label, and
+    // falling through the whole chain used to end at the item itself, rendering [object Object].
+    return resolveMappingFormula(mappingLabel, item) ?? item.label ?? item.text ?? fallbackLabel ?? item;
 }
 
 export function getOptionId(uid, index) {

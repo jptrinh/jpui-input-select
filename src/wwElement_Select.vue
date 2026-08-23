@@ -325,6 +325,18 @@ export default {
             searchState.value = filter;
         };
 
+        /*
+         * Deliberately a property write rather than a new searchState object: the options list
+         * reports its matches from a watcher on filteredOptions, and that computed reads
+         * searchState. Replacing the object there invalidates the computed, which produces a fresh
+         * filtered array, which fires the watcher again - an unbounded loop that only a dev build
+         * would stop.
+         */
+        const updateSearchMatches = searchMatches => {
+            if (!searchState.value) return;
+            searchState.value.searchMatches = searchMatches;
+        };
+
         const updateValue = value => {
             if (selectType.value === 'single') {
                 // Check if value is an array
@@ -1052,6 +1064,7 @@ export default {
             updateHasSearch,
             updateSearchElement,
             updateSearch,
+            updateSearchMatches,
             updateAutoFocusSearch,
             isSearchBarFocused,
             handleKeydown,

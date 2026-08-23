@@ -62,6 +62,7 @@
 
 <script>
 import InputSelectOption from './wwElement_Option.vue';
+import { WRAPPED_PRIMITIVE } from './utils';
 import { ref, inject, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller';
 /* wwEditor:start */
@@ -106,7 +107,7 @@ export default {
 
         const rawData = inject('_wwSelect:rawData', ref([]));
         const searchState = inject('_wwSelect:searchState', ref(null));
-        const { updateSearch } = inject('_wwSelect:useSearch', {});
+        const { updateSearchMatches } = inject('_wwSelect:useSearch', {});
         const registerOptionProperties = inject('_wwSelect:registerOptionProperties', () => {});
         const registerFilteredOptions = inject('_wwSelect:registerFilteredOptions', () => {});
         const activeDescendant = inject('_wwSelect:activeDescendant', ref(''));
@@ -166,8 +167,8 @@ export default {
                 // Handle primitive values properly - don't spread them as they become indexed objects
                 const isPrimitive = typeof item !== 'object' || item === null;
                 if (isPrimitive) {
-                    // For primitives, create a simple object wrapper
-                    return { value: item, id: `id_${index}` };
+                    // Tagged so it cannot be mistaken for a data object of the same shape.
+                    return { value: item, id: `id_${index}`, [WRAPPED_PRIMITIVE]: true };
                 } else {
                     // For objects, use the existing spread logic
                     return { ...item, id: item.id ?? `id_${index}` };
@@ -181,23 +182,36 @@ export default {
          * position is estimated from unmeasured item sizes, hence the scrollIntoView afterwards to
          * settle on the exact offset once the option is really there.
          */
-        const scrollToFocusedOption = () => {
+        const scrollToFocusedOption = ({ resetWhenUnfocused = false } = {}) => {
             const scroller = heavyMode.value ? recycleScrollerRef.value : dynamicScrollerRef.value;
             const id = activeDescendant.value;
 
-            // Nothing focused - typically a search whose results hold no selected option. Start
-            // from the top rather than keeping an offset that belonged to the previous list.
             if (!id) {
-                scroller?.scrollToItem?.(0);
+                // Only when the list itself changed: a filter can leave an offset belonging to the
+                // previous list, which the browser clamps to the end of the shorter one. Clearing
+                // the focus alone - unselecting an option - must leave the scroll where it is.
+                if (resetWhenUnfocused) scroller?.scrollToItem?.(0);
                 return;
             }
 
             const frontDocument = wwLib.getFrontDocument();
-            if (!frontDocument.getElementById(id)) {
-                scroller?.scrollToItem?.(focusedOptionIndex.value);
+            const focusedElement = frontDocument.getElementById(id);
+            if (focusedElement) {
+                focusedElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                return;
             }
 
-            frontDocument.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            // The option is outside the rendered window, so there is nothing to scroll into view.
+            scroller?.scrollToItem?.(focusedOptionIndex.value);
+
+            /*
+             * scrollToItem only sets scrollTop, from sizes it had to estimate for everything it
+             * never measured, and the scroller renders the new window on its own scroll handler.
+             * The option therefore exists a frame later - that is when the offset can be settled.
+             */
+            wwLib.getFrontWindow().requestAnimationFrame(() => {
+                frontDocument.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            });
         };
 
         /*
@@ -206,8 +220,8 @@ export default {
          * set on scrollTop is clamped back to 0 - which is why the dropdown used to open at the top
          * of the list instead of at the selected option.
          */
-        const scheduleScrollToFocusedOption = () => {
-            nextTick(() => wwLib.getFrontWindow().requestAnimationFrame(scrollToFocusedOption));
+        const scheduleScrollToFocusedOption = (options = {}) => {
+            nextTick(() => wwLib.getFrontWindow().requestAnimationFrame(() => scrollToFocusedOption(options)));
         };
 
         /*
@@ -220,21 +234,20 @@ export default {
                 registerFilteredOptions(items);
                 // The scroller is no longer remounted on every count change, so the scroll offset
                 // has to be brought back in line with the new list explicitly.
-                scheduleScrollToFocusedOption();
+                scheduleScrollToFocusedOption({ resetWhenUnfocused: true });
             },
             { immediate: true }
         );
 
         onBeforeUnmount(() => registerFilteredOptions([]));
 
-        watch(activeDescendant, scheduleScrollToFocusedOption);
-        onMounted(scheduleScrollToFocusedOption);
+        // Wrapped: neither the watcher arguments nor the mounted hook are scroll options.
+        watch(activeDescendant, () => scheduleScrollToFocusedOption());
+        onMounted(() => scheduleScrollToFocusedOption({ resetWhenUnfocused: true }));
 
         watch(filteredOptions, () => {
-            if (updateSearch) {
-                const searchMatches = searchState.value && searchState.value.value ? filteredOptions.value : [];
-                updateSearch({ ...searchState.value, searchMatches });
-            }
+            if (!updateSearchMatches) return;
+            updateSearchMatches(searchState.value?.value ? filteredOptions.value : []);
         });
 
         // Styles

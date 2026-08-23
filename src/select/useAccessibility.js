@@ -57,8 +57,10 @@ export default function useAccessibility({
     watch(
         options,
         () => {
+            // Followed by value, not by id: ids are positional, so the focused id still exists in
+            // a re-filtered list of the same length while pointing at an unrelated option.
             const focusedIndex = activeDescendant.value
-                ? options.value.findIndex(option => option.optionId === activeDescendant.value)
+                ? options.value.findIndex(option => areValuesEqual(option.value, activeOptionValue.value))
                 : -1;
 
             if (focusedIndex !== -1) {
