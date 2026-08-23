@@ -106,11 +106,13 @@ export default {
             return prefix || null;
         });
 
-        const isOptionSelected = computed(
-            () =>
-                !!localContext.value?.data?.select?.active?.details?.label ||
-                localContext.value?.data?.select?.active?.details?.length > 0
-        );
+        const isOptionSelected = computed(() => {
+            // details is null when nothing is selected, an array in multiple mode. Testing the
+            // label instead treated a legitimate '' or 0 label as an empty selection.
+            const details = localContext.value?.data?.select?.active?.details;
+            if (Array.isArray(details)) return details.length > 0;
+            return details !== null && details !== undefined;
+        });
 
         const selectedDetails = computed(() => {
             const details = localContext.value?.data?.select?.active?.details;

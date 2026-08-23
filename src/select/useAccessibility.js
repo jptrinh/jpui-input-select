@@ -119,12 +119,9 @@ export default function useAccessibility({
             },
             Enter: () => {
                 event.preventDefault();
-                if (
-                    isOpen.value &&
-                    activeOptionValue.value != null &&
-                    activeOptionValue.value !== undefined &&
-                    activeOptionValue.value !== ''
-                ) {
+                // Gated on the focused id, not on its value: an option is allowed to be worth
+                // '', 0 or null, and only the id tells us whether anything is focused at all.
+                if (isOpen.value && activeDescendant.value) {
                     toggleValue(activeOptionValue.value);
                     // Restore focus to trigger after selection so focus-visible state is preserved.
                     // setTimeout(0) ensures this runs after any nextTick-scheduled option focus calls.

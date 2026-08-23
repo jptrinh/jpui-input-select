@@ -362,10 +362,8 @@ export default {
         };
 
         const toggleValueAccessibility = value => {
-            // Don't process empty values
-            if (value === '' || value == null || value === undefined) {
-                return;
-            }
+            // Only reached with an option actually focused, so '' / 0 / null are real values here.
+            if (value === undefined) return;
 
             const option = options.value.find(option => areValuesEqual(option.value, value));
             if (option?.disabled) return;
