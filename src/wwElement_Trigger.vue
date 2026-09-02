@@ -45,6 +45,7 @@
 
 <script>
 import { computed, inject, ref, watch } from 'vue';
+import { loadIcon } from './utils';
 
 const CLOSE_CHIP_PLACEHOLDER =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up"><path d="m18 15-6-6-6 6"/></svg>';
@@ -94,7 +95,7 @@ export default {
         watch(
             selectedIconCode,
             async code => {
-                if (code) selectedIconHtml.value = (await getIcon(code)) || null;
+                if (code) selectedIconHtml.value = await loadIcon(getIcon, code, null);
                 else selectedIconHtml.value = null;
             },
             { immediate: true }
@@ -131,7 +132,7 @@ export default {
 
                     if (optionType.value === 'iconText' && d?.icon) {
                         try {
-                            iconHtml = (await getIcon(d.icon)) || null;
+                            iconHtml = await loadIcon(getIcon, d.icon, null);
                         } catch (e) {
                             iconHtml = null;
                         }
@@ -299,7 +300,7 @@ export default {
                 const defaultIcon = isOpen.value ? CLOSE_CHIP_PLACEHOLDER : OPEN_CHIP_PLACEHOLDER;
 
                 if (props.content[iconKey]) {
-                    chipIcon.value = (await getIcon(props.content[iconKey])) || defaultIcon;
+                    chipIcon.value = await loadIcon(getIcon, props.content[iconKey], defaultIcon);
                 } else {
                     chipIcon.value = defaultIcon;
                 }
@@ -311,7 +312,7 @@ export default {
             () => props.content.chipIconUnselect,
             async newValue => {
                 if (newValue) {
-                    chipIconUnselect.value = (await getIcon(newValue)) || UNSELECT_CHIP_PLACEHOLDER;
+                    chipIconUnselect.value = await loadIcon(getIcon, newValue, UNSELECT_CHIP_PLACEHOLDER);
                 } else {
                     chipIconUnselect.value = UNSELECT_CHIP_PLACEHOLDER;
                 }

@@ -68,3 +68,18 @@ export function resolveOptionLabel(item, mappingLabel, resolveMappingFormula, fa
 export function getOptionId(uid, index) {
     return `ww-select-option-${uid}-${index}`;
 }
+
+// `getIcon` resolves to whatever the server answered, not to null, when the icon is
+// missing — so `(await getIcon(x)) || DEFAULT` only holds on a host that 404s. Behind
+// an SPA fallback (any self-hosted WeWeb export) an unset icon asks for
+// `/icons/null.svg`, gets `index.html` back with a 200, and that truthy HTML lands in
+// `v-html`. Guard the empty code, and require the answer to look like an SVG.
+export async function loadIcon(getIcon, code, fallback = null) {
+    if (!code) return fallback;
+    try {
+        const html = await getIcon(code);
+        return /^\s*<svg[\s>]/i.test(html ?? '') ? html : fallback;
+    } catch (e) {
+        return fallback;
+    }
+}

@@ -35,7 +35,7 @@ import useAccessibility from './useAccessibility_Option';
 /* wwEditor:start */
 import useEditorHint from './editor/useEditorHint';
 /* wwEditor:end */
-import { areValuesEqual, getOptionId, resolveOptionLabel, resolveOptionValue } from './utils';
+import { areValuesEqual, getOptionId, loadIcon, resolveOptionLabel, resolveOptionValue } from './utils';
 
 const SELECT_OPTION_ICON =
     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -108,7 +108,7 @@ export default {
         const optionIcon = ref(null);
 
         watchEffect(async () => {
-            optionIcon.value = (await getIcon(props.content.optionIcon)) || SELECT_OPTION_ICON;
+            optionIcon.value = await loadIcon(getIcon, props.content.optionIcon, SELECT_OPTION_ICON);
         });
 
         const optionIconStyle = computed(() => {
@@ -162,7 +162,7 @@ export default {
         const displayIconHtml = ref(null);
         watchEffect(async () => {
             if (displayIconCode.value) {
-                displayIconHtml.value = (await getIcon(displayIconCode.value)) || null;
+                displayIconHtml.value = await loadIcon(getIcon, displayIconCode.value, null);
             } else {
                 displayIconHtml.value = null;
             }
