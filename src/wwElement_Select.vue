@@ -953,7 +953,13 @@ export default {
 
                 emit('trigger-event', { name: 'initValueChange', event: { value: initValue.value } });
             },
-            { immediate: true, deep: true }
+            /*
+             * Not deep, despite the { deep: true } that used to sit here as an ignored fourth
+             * argument: it has therefore never been active. Enabling it would make a workflow that
+             * mutates the bound initValueMulti array in place - rather than replacing it - reset
+             * the value and wipe whatever the user had selected.
+             */
+            { immediate: true }
         );
 
         watch(
