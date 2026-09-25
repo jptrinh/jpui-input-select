@@ -128,6 +128,13 @@ export default {
 
         const appDivRef = shallowRef(wwLib.getFrontDocument().querySelector('#app'));
 
+        /*
+         * Option ids are built from this, not from props.uid: a select inside a repeat renders the
+         * same element uid several times, and two of those dropdowns being open at once would give
+         * their rows identical DOM ids - getElementById would then scroll the wrong one.
+         */
+        const instanceUid = wwLib.wwUtils.getUid();
+
         const selectType = computed(() => props.content.selectType);
         const initValue = computed(() =>
             selectType.value === 'single' ? props.content.initValueSingle ?? null : props.content.initValueMulti || []
@@ -220,7 +227,7 @@ export default {
         // Label / value / disabled resolved once per item, independently of the current selection.
         const optionDescriptors = computed(() =>
             filteredItems.value.map((item, index) => ({
-                optionId: getOptionId(props.uid, index),
+                optionId: getOptionId(instanceUid, index),
                 label: resolveOptionLabel(item, toValue(mappingLabel), resolveMappingFormula, props.content.label),
                 value: resolveOptionValue(item, toValue(mappingValue), resolveMappingFormula, props.content.value),
                 disabled: !!resolveMappingFormula(toValue(mappingDisabled), item),
@@ -1055,7 +1062,7 @@ export default {
         provide('_wwSelect:optionProperties', optionProperties);
         provide('_wwSelect:updateValue', updateValue);
         provide('_wwSelect:removeSpecificValue', removeSpecificValue);
-        provide('_wwSelect:uid', props.uid);
+        provide('_wwSelect:uid', instanceUid);
         provide('_wwSelect:registerFilteredOptions', registerFilteredOptions);
         provide('_wwSelect:registerOptionProperties', registerOptionProperties);
         provide('_wwSelect:registerTriggerLocalContext', registerTriggerLocalContext);
