@@ -256,10 +256,16 @@ export default {
         // Styles
         const syncFloating = () => {
             if (!triggerElement?.value) return;
+
+            // Without a viewport there is no geometry to compute: a zero height would make every
+            // comparison below think there is no room and flip the dropdown above the trigger.
+            const frontWindow = wwLib.getFrontWindow();
+            if (!frontWindow) return;
+
             const triggerRect = triggerElement.value.getBoundingClientRect();
             const offsetY = parseInt(props.content.offsetY) || 0;
             const offsetX = parseInt(props.content.offsetX) || 0;
-            const viewportHeight = wwLib.getFrontWindow()?.innerHeight || 0;
+            const viewportHeight = frontWindow.innerHeight;
 
             let top = triggerRect.bottom + offsetY;
 
