@@ -232,11 +232,20 @@ export default {
             dynamicScrollerItems,
             items => {
                 registerFilteredOptions(items);
-                // The scroller is no longer remounted on every count change, so the scroll offset
-                // has to be brought back in line with the new list explicitly.
-                scheduleScrollToFocusedOption({ resetWhenUnfocused: true });
             },
             { immediate: true }
+        );
+
+        /*
+         * The scroller is no longer remounted when the list changes, so the offset has to be
+         * reconciled explicitly - but only when the list the user is looking at really changed.
+         * Keyed on the query and the item count rather than on the array identity: a bound formula
+         * can hand us a fresh array of the same options on any reactive tick, and yanking a
+         * mouse-scrolled dropdown back to the top for that would be worse than the stale offset.
+         */
+        watch(
+            () => [searchState.value?.value, dynamicScrollerItems.value.length],
+            () => scheduleScrollToFocusedOption({ resetWhenUnfocused: true })
         );
 
         onBeforeUnmount(() => registerFilteredOptions([]));
