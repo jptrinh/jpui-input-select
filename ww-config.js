@@ -131,6 +131,7 @@ export default {
                     'optionFontColorFocused',
                     'optionFontColorHover',
                     'optionCursor',
+                    'optionNoWrap',
                     'optionIcon',
                     'optionIconSize',
                     'optionIconColor',
@@ -2532,6 +2533,24 @@ export default {
             },
             /* wwEditor:end */
             defaultValue: 'pointer',
+        },
+        optionNoWrap: {
+            label: { en: 'No wrap' },
+            type: 'OnOff',
+            defaultValue: false,
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+            /* wwEditor:start */
+            bindingValidation: {
+                type: 'boolean',
+                tooltip: 'A boolean value: \n\n`true` or `false`',
+            },
+            propertyHelp: {
+                tooltip: 'Keep option labels on a single line and truncate long ones with an ellipsis.',
+            },
+            /* wwEditor:end */
         },
         optionIcon: {
             label: { en: 'Checked icon', fr: 'Icône check' },

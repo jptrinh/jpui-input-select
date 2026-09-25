@@ -96,6 +96,7 @@ export default {
                 'font-size': props.content.optionFontSize,
                 'font-weight': props.content.optionFontWeight,
                 cursor: props.content.optionCursor,
+                'white-space': props.content?.optionNoWrap ? 'nowrap' : undefined,
                 'border-radius': props.content.optionBorderRadius,
                 border: props.content.optionBorder,
                 '--ww-select-option-bg-color-hover': props.content.optionBgColorHover,
