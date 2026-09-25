@@ -26,11 +26,17 @@ export default function useSearch(searchState, { updateSearch }) {
     }
 
     function resetSearch() {
-        if (searchElement.value) {
-            searchElement.value.value = '';
-            // searchState is a ref: spreading it instead of its value dropped searchBy.
-            updateSearch({ ...searchState.value, value: '', searchMatches: [] });
-        }
+        if (!searchElement.value || !searchState.value) return;
+
+        searchElement.value.value = '';
+        /*
+         * Written property by property rather than as a replacement object. Spreading the state
+         * would unwrap searchBy, which the search element passes as a live computed ref, freezing
+         * it to whatever it held at reset time - and replacing the object also invalidates the
+         * options list's filteredOptions, which feeds matches straight back into this state.
+         */
+        searchState.value.value = '';
+        searchState.value.searchMatches = [];
     }
 
     return {
