@@ -99,6 +99,9 @@ export default {
                 'white-space': props.content?.optionNoWrap ? 'nowrap' : undefined,
                 'border-radius': props.content.optionBorderRadius,
                 border: props.content.optionBorder,
+                // Base colors, used as the fallback when no hover/focus color is set
+                '--ww-select-option-bg-color': props.content.optionBgColor,
+                '--ww-select-option-font-color': props.content.optionFontColor,
                 '--ww-select-option-bg-color-hover': props.content.optionBgColorHover,
                 '--ww-select-option-bg-color-focused': props.content.optionBgColorFocused,
                 '--ww-select-option-font-color-hover': props.content.optionFontColorHover,
@@ -366,12 +369,12 @@ export default {
     gap: 8px;
     user-select: none;
     &:hover {
-        background-color: var(--ww-select-option-bg-color-hover) !important;
-        color: var(--ww-select-option-font-color-hover) !important;
+        background-color: var(--ww-select-option-bg-color-hover, var(--ww-select-option-bg-color)) !important;
+        color: var(--ww-select-option-font-color-hover, var(--ww-select-option-font-color)) !important;
     }
     &.focused {
-        background-color: var(--ww-select-option-bg-color-focused) !important;
-        color: var(--ww-select-option-font-color-focused) !important;
+        background-color: var(--ww-select-option-bg-color-focused, var(--ww-select-option-bg-color)) !important;
+        color: var(--ww-select-option-font-color-focused, var(--ww-select-option-font-color)) !important;
     }
     &.disabled {
         cursor: not-allowed;
