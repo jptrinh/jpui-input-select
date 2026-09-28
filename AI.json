@@ -101,6 +101,15 @@
             }
         },
         {
+            "name": "mappingGroup",
+            "description": "Formula returning the group label of each option, e.g. `context.mapping?.['platform']`. Options with the same label are listed together under a header showing it, groups in order of first appearance; options returning null or '' come first, without a header. Keyboard navigation follows the grouped order.",
+            "type": "formula",
+            "defaultValue": {
+                "type": "f",
+                "code": "context.mapping?.['group'] ?? null"
+            }
+        },
+        {
             "name": "initValueSingle",
             "wewebName": "value",
             "description": "The initial selected value for single select mode. The format should match the mappingValue logic. For example, if mappingValue targets an id, initValueSingle should be an id.",
@@ -1005,6 +1014,53 @@
             }
         },
         {
+            "name": "groupLabelFontFamily",
+            "description": "Font family of the group labels.",
+            "type": "string",
+            "responsive": true
+        },
+        {
+            "name": "groupLabelFontSize",
+            "description": "Font size of the group labels.",
+            "type": "string",
+            "defaultValue": "12px",
+            "responsive": true
+        },
+        {
+            "name": "groupLabelFontWeight",
+            "description": "Font weight of the group labels.",
+            "type": "number",
+            "defaultValue": 500,
+            "responsive": true
+        },
+        {
+            "name": "groupLabelFontColor",
+            "description": "Text color of the group labels.",
+            "type": "string",
+            "defaultValue": "#71717a",
+            "responsive": true
+        },
+        {
+            "name": "groupLabelPadding",
+            "description": "Padding of the group labels.",
+            "type": "string",
+            "defaultValue": "6px 8px",
+            "responsive": true
+        },
+        {
+            "name": "groupSpacing",
+            "description": "Space above each group label except the first.",
+            "type": "string",
+            "defaultValue": "4px",
+            "responsive": true
+        },
+        {
+            "name": "groupSeparator",
+            "description": "Border (e.g. `1px solid #e4e4e7`) drawn above each group label except the first.",
+            "type": "string",
+            "responsive": true
+        },
+        {
             "name": "emptyStateFontFamily",
             "description": "Font family for the empty state text.",
             "type": "string",
@@ -1341,7 +1397,7 @@
     "localContext": [
         {
             "path": "select.select.options",
-            "description": "Array of all available options after mapping. Each entry is `{ value, label, disabled, isSelected, data }`.",
+            "description": "Array of all available options after mapping. Each entry is `{ value, label, disabled, group, isSelected, data }`.",
             "type": "array",
             "content": "Array of objects equivalent to the choices property"
         },

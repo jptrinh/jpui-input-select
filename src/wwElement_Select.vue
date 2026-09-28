@@ -80,6 +80,7 @@ import {
     getOptionId,
     resolveOptionLabel,
     resolveOptionValue,
+    resolveOptionGroup,
 } from './utils';
 
 /* wwEditor:start */
@@ -221,6 +222,7 @@ export default {
         const mappingImage = computed(() => props.content.mappingImage);
         const mappingValue = computed(() => props.content.mappingValue);
         const mappingDisabled = computed(() => props.content.mappingDisabled);
+        const mappingGroup = computed(() => props.content.mappingGroup);
         const showSearch = computed(() => props.content.showSearch);
         const allowScrollingWhenOpen = computed(() => props.content.allowScrollingWhenOpen);
 
@@ -231,6 +233,7 @@ export default {
                 label: resolveOptionLabel(item, toValue(mappingLabel), resolveMappingFormula, props.content.label),
                 value: resolveOptionValue(item, toValue(mappingValue), resolveMappingFormula, props.content.value),
                 disabled: !!resolveMappingFormula(toValue(mappingDisabled), item),
+                group: resolveOptionGroup(item, toValue(mappingGroup), resolveMappingFormula),
                 _data: item,
             }))
         );
@@ -1061,6 +1064,7 @@ export default {
         provide('_wwSelect:mappingImage', mappingImage);
         provide('_wwSelect:mappingValue', mappingValue);
         provide('_wwSelect:mappingDisabled', mappingDisabled);
+        provide('_wwSelect:mappingGroup', mappingGroup);
         provide('_wwSelect:rawData', rawData);
         provide('_wwSelect:options', options);
         provide('_wwSelect:type', selectType);
@@ -1099,6 +1103,7 @@ export default {
             - \`value\`: Option's value
             - \`label\`: Display text
             - \`disabled\`: Boolean indicating if option is disabled
+            - \`group\`: Group label of the option (null when ungrouped)
             - \`isSelected\`: Boolean indicating if option is selected
             - \`data\`: Data from the repeat context (optional)
 
