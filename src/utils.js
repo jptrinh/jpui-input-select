@@ -65,6 +65,18 @@ export function resolveOptionLabel(item, mappingLabel, resolveMappingFormula, fa
     return resolveMappingFormula(mappingLabel, item) ?? item.label ?? item.text ?? fallbackLabel ?? item;
 }
 
+/*
+ * The group an option belongs to, as a display label. Primitives and unmapped options have
+ * none (null), and an empty string counts as none too: a group header with no text would
+ * only be a gap in the list.
+ */
+export function resolveOptionGroup(item, mappingGroup, resolveMappingFormula) {
+    if (!mappingGroup || isWrappedPrimitive(item)) return null;
+    if (item === null || typeof item !== 'object') return null;
+    const group = resolveMappingFormula(mappingGroup, item);
+    return group === null || group === undefined || group === '' ? null : String(group);
+}
+
 export function getOptionId(uid, index) {
     return `ww-select-option-${uid}-${index}`;
 }

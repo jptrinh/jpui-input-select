@@ -140,6 +140,19 @@ export default {
                 ],
             },
             {
+                label: 'Group label',
+                isCollapsible: true,
+                properties: [
+                    'groupLabelFontFamily',
+                    'groupLabelFontSize',
+                    'groupLabelFontWeight',
+                    'groupLabelFontColor',
+                    'groupLabelPadding',
+                    'groupSpacing',
+                    'groupSeparator',
+                ],
+            },
+            {
                 label: 'Empty state',
                 isCollapsible: true,
                 properties: [
@@ -187,6 +200,7 @@ export default {
             'mappingImage',
             'mappingValue',
             'mappingDisabled',
+            'mappingGroup',
             'initValueSingle',
             'initValueMulti',
             'allowScrollingWhenOpen',
@@ -455,6 +469,24 @@ export default {
             propertyHelp: {
                 tooltip:
                     'The condition that determines if the option is disabled. This will be executed for each item in the options to return a boolean value.',
+            },
+            /* wwEditor:end */
+            section: 'settings',
+        },
+        mappingGroup: {
+            label: 'Group per item',
+            type: 'Formula',
+            options: content => ({
+                template: Array.isArray(content.choices) ? content.choices[0] : null,
+            }),
+            defaultValue: {
+                type: 'f',
+                code: "context.mapping?.['group'] ?? null",
+            },
+            /* wwEditor:start */
+            propertyHelp: {
+                tooltip:
+                    'The group of the current option item. Options returning the same text are listed together under a header with that text, groups in the order they first appear. Options returning null or an empty string are listed first, without a header. In heavy mode each group label takes the height of one item.',
             },
             /* wwEditor:end */
             section: 'settings',
@@ -2641,6 +2673,121 @@ export default {
             classes: true,
             defaultValue: '4px',
             hidden: content => content.optionType !== 'imageText',
+        },
+
+        /* ------------------------------------
+            GROUP LABEL STYLES
+        ------------------------------------- */
+        groupLabelFontFamily: {
+            label: {
+                en: 'Font family',
+            },
+            type: 'FontFamily',
+            defaultValue: undefined,
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+        },
+        groupLabelFontSize: {
+            type: 'Length',
+            label: {
+                en: 'Font size',
+            },
+            options: {
+                unitChoices: [{ value: 'px', label: 'px', min: 1, max: 500 }],
+                noRange: true,
+                useVar: true,
+            },
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+            defaultValue: '12px',
+        },
+        groupLabelFontWeight: {
+            label: {
+                en: 'Font weight',
+                fr: 'Graisse',
+            },
+            type: 'TextSelect',
+            options: {
+                options: [
+                    { value: null, label: { en: 'Default' } },
+                    { value: 100, label: { en: '100 - Thin' } },
+                    { value: 200, label: { en: '200 - Extra Light' } },
+                    { value: 300, label: { en: '300 - Light' } },
+                    { value: 400, label: { en: '400 - Normal' } },
+                    { value: 500, label: { en: '500 - Medium' } },
+                    { value: 600, label: { en: '600 - Semi Bold' } },
+                    { value: 700, label: { en: '700 - Bold' } },
+                    { value: 800, label: { en: '800 - Extra Bold' } },
+                    { value: 900, label: { en: '900 - Black' } },
+                ],
+            },
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+            defaultValue: 500,
+        },
+        groupLabelFontColor: {
+            label: {
+                en: 'Text color',
+            },
+            type: 'Color',
+            defaultValue: '#71717a',
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+        },
+        groupLabelPadding: {
+            type: 'Spacing',
+            label: {
+                en: 'Padding',
+            },
+            defaultValue: '6px 8px',
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+        },
+        groupSpacing: {
+            type: 'Length',
+            label: {
+                en: 'Space between groups',
+            },
+            options: {
+                unitChoices: [{ value: 'px', label: 'px', min: 0, max: 500 }],
+                useVar: true,
+            },
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+            defaultValue: '4px',
+            /* wwEditor:start */
+            propertyHelp: {
+                tooltip: 'Space above each group label, except the first one.',
+            },
+            /* wwEditor:end */
+        },
+        groupSeparator: {
+            type: 'Border',
+            label: {
+                en: 'Separator',
+            },
+            defaultValue: undefined,
+            states: true,
+            classes: true,
+            bindable: true,
+            responsive: true,
+            /* wwEditor:start */
+            propertyHelp: {
+                tooltip: 'Line drawn above each group label, except the first one.',
+            },
+            /* wwEditor:end */
         },
 
         /* ------------------------------------

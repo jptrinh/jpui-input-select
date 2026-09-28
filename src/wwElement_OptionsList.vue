@@ -5,22 +5,25 @@
         ref="recycleScrollerRef"
         class="scroller"
         :style="scrollerStyle"
-        :items="dynamicScrollerItems"
+        :items="rows"
         :item-size="itemSize"
         :buffer="virtualScrollBuffer"
         key-field="id"
     >
-        <template v-slot="{ item, index }">
-            <wwLayoutItemContext :key="index" is-repeat :index="index" :data="item">
-                <div :style="index != filteredOptions.length - 1 ? { paddingBottom: content.optionSpacing } : {}">
+        <template v-slot="{ item: row, index }">
+            <div :style="index != rows.length - 1 ? { paddingBottom: content.optionSpacing } : {}">
+                <div v-if="row.isGroupHeader" :id="row.domId" role="presentation" :style="groupLabelStyle(row)">
+                    {{ row.label }}
+                </div>
+                <wwLayoutItemContext v-else :key="row.index" is-repeat :index="row.index" :data="row.item">
                     <ww-element-option
-                        :local-data="item"
-                        :index="index"
+                        :local-data="row.item"
+                        :index="row.index"
                         :content="content"
                         :wwEditorState="wwEditorState"
                     />
-                </div>
-            </wwLayoutItemContext>
+                </wwLayoutItemContext>
+            </div>
         </template>
     </RecycleScroller>
 
@@ -30,27 +33,30 @@
         ref="dynamicScrollerRef"
         class="scroller"
         :style="scrollerStyle"
-        :items="dynamicScrollerItems"
+        :items="rows"
         :min-item-size="virtualScrollMinItemSize"
         :buffer="virtualScrollBuffer"
     >
-        <template v-slot="{ item, index, active }">
+        <template v-slot="{ item: row, index, active }">
             <DynamicScrollerItem
-                :item="item"
+                :item="row"
                 :active="active"
-                :size-dependencies="JSON.stringify(item)"
+                :size-dependencies="JSON.stringify(row.isGroupHeader ? row.label : row.item)"
                 :data-index="index"
             >
-                <wwLayoutItemContext :key="index" is-repeat :index="index" :data="item">
-                    <div :style="index != filteredOptions.length - 1 ? { paddingBottom: content.optionSpacing } : {}">
+                <div :style="index != rows.length - 1 ? { paddingBottom: content.optionSpacing } : {}">
+                    <div v-if="row.isGroupHeader" :id="row.domId" role="presentation" :style="groupLabelStyle(row)">
+                        {{ row.label }}
+                    </div>
+                    <wwLayoutItemContext v-else :key="row.index" is-repeat :index="row.index" :data="row.item">
                         <ww-element-option
-                            :local-data="item"
-                            :index="index"
+                            :local-data="row.item"
+                            :index="row.index"
                             :content="content"
                             :wwEditorState="wwEditorState"
                         />
-                    </div>
-                </wwLayoutItemContext>
+                    </wwLayoutItemContext>
+                </div>
             </DynamicScrollerItem>
         </template>
     </DynamicScroller>
@@ -62,8 +68,8 @@
 
 <script>
 import InputSelectOption from './wwElement_Option.vue';
-import { WRAPPED_PRIMITIVE } from './utils';
-import { ref, inject, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { WRAPPED_PRIMITIVE, getOptionId, resolveOptionGroup } from './utils';
+import { ref, inject, computed, watch, nextTick, onMounted, onBeforeUnmount, toValue } from 'vue';
 import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from 'vue-virtual-scroller';
 /* wwEditor:start */
 import useEditorHint from './editor/useEditorHint';
@@ -105,7 +111,11 @@ export default {
             return false;
         });
 
+        const { resolveMappingFormula } = wwLib.wwFormula.useFormula();
+
         const rawData = inject('_wwSelect:rawData', ref([]));
+        const selectUid = inject('_wwSelect:uid', '');
+        const mappingGroup = inject('_wwSelect:mappingGroup', ref(null));
         const searchState = inject('_wwSelect:searchState', ref(null));
         const { updateSearchMatches } = inject('_wwSelect:useSearch', {});
         const registerOptionProperties = inject('_wwSelect:registerOptionProperties', () => {});
@@ -162,8 +172,28 @@ export default {
             });
         });
 
+        /*
+         * Options sharing a group are gathered under one header, groups in the order their first
+         * option appears in the data. Options without a group come first, with no header - the way
+         * a shadcn select lists loose items before its labelled groups. Without any group mapped
+         * this is the filtered list untouched.
+         */
+        const optionGroups = computed(() => {
+            const mapping = toValue(mappingGroup);
+            const groups = new Map([[null, []]]);
+            for (const item of filteredOptions.value) {
+                const group = resolveOptionGroup(item, mapping, resolveMappingFormula);
+                if (!groups.has(group)) groups.set(group, []);
+                groups.get(group).push(item);
+            }
+            return [...groups].filter(([, items]) => items.length > 0).map(([label, items]) => ({ label, items }));
+        });
+
+        // The options in display order - what the select navigates over, grouped or not.
+        const orderedOptions = computed(() => optionGroups.value.flatMap(group => group.items));
+
         const dynamicScrollerItems = computed(() => {
-            return filteredOptions.value.map((item, index) => {
+            return orderedOptions.value.map((item, index) => {
                 // Handle primitive values properly - don't spread them as they become indexed objects
                 const isPrimitive = typeof item !== 'object' || item === null;
                 if (isPrimitive) {
@@ -174,6 +204,44 @@ export default {
                     return { ...item, id: item.id ?? `id_${index}` };
                 }
             });
+        });
+
+        /*
+         * What the scroller renders: the options, each group preceded by a header row. Option rows
+         * keep their option index, which is what their DOM id, the keyboard focus and the local
+         * context are built from - headers are never part of the option list.
+         */
+        const rows = computed(() => {
+            const rows = [];
+            let index = 0;
+            for (const group of optionGroups.value) {
+                if (group.label !== null) {
+                    rows.push({
+                        id: `__ww-select-group-${rows.length}`,
+                        isGroupHeader: true,
+                        isFirst: rows.length === 0,
+                        label: group.label,
+                        // Named after its first option, so scrolling to that option can bring it too.
+                        domId: `${getOptionId(selectUid, index)}-group`,
+                    });
+                }
+                for (let i = 0; i < group.items.length; i++, index++) {
+                    const item = dynamicScrollerItems.value[index];
+                    rows.push({ id: item.id, index, item });
+                }
+            }
+            return rows;
+        });
+
+        // Row to scroll to for each option: its group header when it opens a group, so moving up
+        // onto a group's first option reveals the group label rather than stopping just below it.
+        const scrollRowByOptionIndex = computed(() => {
+            const map = [];
+            rows.value.forEach((row, rowIndex) => {
+                if (row.isGroupHeader) return;
+                map[row.index] = rows.value[rowIndex - 1]?.isGroupHeader ? rowIndex - 1 : rowIndex;
+            });
+            return map;
         });
 
         /*
@@ -197,12 +265,15 @@ export default {
             const frontDocument = wwLib.getFrontDocument();
             const focusedElement = frontDocument.getElementById(id);
             if (focusedElement) {
+                frontDocument.getElementById(`${id}-group`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 focusedElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 return;
             }
 
             // The option is outside the rendered window, so there is nothing to scroll into view.
-            scroller?.scrollToItem?.(focusedOptionIndex.value);
+            scroller?.scrollToItem?.(
+                scrollRowByOptionIndex.value[focusedOptionIndex.value] ?? focusedOptionIndex.value
+            );
 
             /*
              * scrollToItem only sets scrollTop, from sizes it had to estimate for everything it
@@ -210,6 +281,7 @@ export default {
              * The option therefore exists a frame later - that is when the offset can be settled.
              */
             wwLib.getFrontWindow().requestAnimationFrame(() => {
+                frontDocument.getElementById(`${id}-group`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 frontDocument.getElementById(id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             });
         };
@@ -254,9 +326,9 @@ export default {
         watch(activeDescendant, () => scheduleScrollToFocusedOption());
         onMounted(() => scheduleScrollToFocusedOption({ resetWhenUnfocused: true }));
 
-        watch(filteredOptions, () => {
+        watch(orderedOptions, () => {
             if (!updateSearchMatches) return;
-            updateSearchMatches(searchState.value?.value ? filteredOptions.value : []);
+            updateSearchMatches(searchState.value?.value ? orderedOptions.value : []);
         });
 
         // Styles
@@ -268,6 +340,20 @@ export default {
                 'min-height': '0', // Important for flex children to shrink below content size
                 padding: props.content.dropdownPadding,
             };
+        });
+
+        // A function of the row: only the separator depends on it (none above the first group).
+        const groupLabelStyle = row => ({
+            'font-family': props.content.groupLabelFontFamily,
+            'font-size': props.content.groupLabelFontSize,
+            'font-weight': props.content.groupLabelFontWeight,
+            color: props.content.groupLabelFontColor,
+            padding: props.content.groupLabelPadding,
+            'white-space': props.content.optionNoWrap ? 'nowrap' : undefined,
+            overflow: props.content.optionNoWrap ? 'hidden' : undefined,
+            'text-overflow': props.content.optionNoWrap ? 'ellipsis' : undefined,
+            'border-top': row.isFirst ? undefined : props.content.groupSeparator,
+            'margin-top': row.isFirst ? undefined : props.content.groupSpacing,
         });
 
         const emptyStateStyle = computed(() => {
@@ -310,7 +396,8 @@ export default {
             heavyMode,
             itemSize,
             showEmptyStateInEditor,
-            dynamicScrollerItems,
+            rows,
+            groupLabelStyle,
             scrollerStyle,
             emptyStateStyle,
             recycleScrollerRef,
